@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>موقع فعاليات محافظة درعا</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="stylesheet" href="styles.css?v=2" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <div id="appSplash" class="app-splash">
+    <div class="splash-card">
+      <div class="splash-logo">درعا</div>
+      <h1>فعاليات درعا</h1>
+      <p>تطبيق فعاليات يعمل حتى دون اتصال بالإنترنت.</p>
+      <div class="splash-loader"></div>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container">
+      <div class="header-content">
+        <button type="button" class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="قائمة التنقل">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
+        <h1>موقع فعاليات محافظة درعا</h1>
+        <div class="header-actions">
+          <button type="button" class="button secondary small hidden" id="installButton">تثبيت التطبيق</button>
+          <button type="button" class="button secondary small" id="themeToggle" title="تبديل الوضع المظلم">🌙</button>
+        </div>
+      </div>
+      <p class="header-subtitle">سجل دخول لعرض الفعاليات أو لإدارة المحتوى إذا كنت مدير.</p>
+    </div>
+  </header>
+
+  <!-- Mobile Navigation Menu -->
+  <nav class="mobile-nav" id="mobileNav">
+    <div class="mobile-nav-content">
+      <div class="mobile-nav-header">
+        <h3>القائمة</h3>
+        <button type="button" class="mobile-nav-close" id="mobileNavClose">&times;</button>
+      </div>
+      <div class="mobile-nav-links">
+        <a href="#loginPanel" class="mobile-nav-link" data-panel="loginPanel">تسجيل الدخول</a>
+        <a href="#registerPanel" class="mobile-nav-link" data-panel="registerPanel">إنشاء حساب</a>
+        <a href="#resendPanel" class="mobile-nav-link" data-panel="resendPanel">إعادة إرسال التفعيل</a>
+        <a href="#forgotPanel" class="mobile-nav-link" data-panel="forgotPanel">نسيت كلمة المرور</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section id="loginPanel" class="panel panel-highlight">
+      <h2>تسجيل الدخول</h2>
+      <form id="loginForm" class="login-form">
+        <div class="form-group">
+          <label for="username">اسم المستخدم</label>
+          <input type="text" id="username" name="username" placeholder="admin أو user" required />
+        </div>
+        <div class="form-group">
+          <label for="password">كلمة المرور</label>
+          <input type="password" id="password" name="password" placeholder="كلمة المرور" required />
+        </div>
+        <div class="button-row">
+          <button type="submit" class="button primary">دخول</button>
+        </div>
+      </form>
+      <p id="loginError" class="error-text"></p>
+      <p class="login-hint">المستخدمان الجاهزان: <strong>admin/admin123</strong> و <strong>user/user123</strong></p>
+      <p class="login-hint">ليس لديك حساب؟ <a href="#" id="showRegisterLink">إنشاء حساب جديد</a></p>
+      <p class="login-hint">لم يصلك رابط التفعيل؟ <a href="#" id="showResendLink">إعادة إرسال رابط التفعيل</a></p>
+      <p class="login-hint">نسيت كلمة المرور؟ <a href="#" id="showForgotLink">إعادة تعيين كلمة المرور</a></p>
+    </section>
+
+    <section id="registerPanel" class="panel panel-highlight hidden">
+      <h2>إنشاء حساب جديد</h2>
+      <form id="registerForm" class="login-form">
+        <div class="form-group">
+          <label for="regUsername">اسم المستخدم</label>
+          <input type="text" id="regUsername" name="username" placeholder="اختر اسم مستخدم" required />
+        </div>
+        <div class="form-group">
+          <label for="regEmail">البريد الإلكتروني</label>
+          <input type="email" id="regEmail" name="email" placeholder="example@mail.com" required />
+        </div>
+        <div class="form-group">
+          <label for="regPassword">كلمة المرور</label>
+          <input type="password" id="regPassword" name="password" placeholder="كلمة مرور قوية (6 أحرف على الأقل)" required />
+        </div>
+        <div class="button-row">
+          <button type="submit" class="button primary">إنشاء الحساب</button>
+        </div>
+      </form>
+      <p id="registerError" class="error-text"></p>
+      <p class="login-hint">لديك حساب بالفعل؟ <a href="#" id="showLoginLink">تسجيل الدخول</a></p>
+    </section>
+
+    <section id="resendPanel" class="panel panel-highlight hidden">
+      <h2>إعادة إرسال رابط التفعيل</h2>
+      <form id="resendForm" class="login-form">
+        <div class="form-group">
+          <label for="resendEmail">البريد الإلكتروني</label>
+          <input type="email" id="resendEmail" name="email" placeholder="example@mail.com" required />
+        </div>
+        <div class="button-row">
+          <button type="submit" class="button primary">إرسال الرابط</button>
+        </div>
+      </form>
+      <p id="resendError" class="error-text"></p>
+      <p class="login-hint">لديك حساب بالفعل؟ <a href="#" id="showLoginLink2">العودة لتسجيل الدخول</a></p>
+    </section>
+
+    <section id="forgotPanel" class="panel panel-highlight hidden">
+      <h2>نسيت كلمة المرور</h2>
+      <form id="forgotForm" class="login-form">
+        <div class="form-group">
+          <label for="forgotEmail">البريد الإلكتروني</label>
+          <input type="email" id="forgotEmail" name="email" placeholder="example@mail.com" required />
+        </div>
+        <div class="button-row">
+          <button type="submit" class="button primary">إرسال رابط إعادة التعيين</button>
+        </div>
+      </form>
+      <p id="forgotError" class="error-text"></p>
+      <p class="login-hint">تذكرت كلمة المرور؟ <a href="#" id="showLoginLink3">العودة لتسجيل الدخول</a></p>
+    </section>
+
+    <section id="appPanel" class="hidden">
+      <section class="role-panel">
+        <div>
+          <p id="welcomeMessage">مرحبا بك</p>
+          <p id="roleMessage"></p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="button secondary small" id="notificationSettingsBtn" title="إعدادات الإشعارات">🔔⚙️</button>
+          <button type="button" class="button secondary small" id="themeToggle" title="تبديل الوضع المظلم">🌙</button>
+          <button type="button" class="button secondary" id="logoutButton">تسجيل الخروج</button>
+        </div>
+      </section>
+
+      <section id="adminPanel" class="panel panel-highlight hidden">
+        <h2>إدارة الفعاليات</h2>
+
+        <!-- Statistics Section -->
+        <div class="stats-section">
+          <h3>إحصائيات الفعاليات</h3>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-number" id="totalEvents">0</div>
+              <div class="stat-label">إجمالي الفعاليات</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="upcomingEvents">0</div>
+              <div class="stat-label">الفعاليات القادمة</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="totalAttendees">0</div>
+              <div class="stat-label">إجمالي الحضور</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="avgAttendees">0</div>
+              <div class="stat-label">متوسط الحضور</div>
+            </div>
+          </div>
+        </div>
+
+        <form id="eventForm" class="event-form">
+          <div class="form-group">
+            <label for="title">عنوان الفعالية</label>
+            <input type="text" id="title" name="title" placeholder="مثال: معرض التراث" required />
+          </div>
+          <div class="form-group">
+            <label for="description">الوصف</label>
+            <textarea id="description" name="description" rows="3" placeholder="أدخل تفاصيل الفعالية" required></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="location">المكان</label>
+              <input type="text" id="location" name="location" placeholder="مثال: ساحة البلدية" required />
+              <button type="button" class="button small secondary" id="geocodeBtn">البحث في الخريطة</button>
+            </div>
+            <div class="form-group">
+              <label for="latitude">خط العرض</label>
+              <input type="number" id="latitude" name="latitude" step="any" placeholder="32.6167" />
+            </div>
+            <div class="form-group">
+              <label for="longitude">خط الطول</label>
+              <input type="number" id="longitude" name="longitude" step="any" placeholder="36.1033" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="date">التاريخ</label>
+              <input type="date" id="date" name="date" required />
+            </div>
+            <div class="form-group">
+              <label for="category">الفئة</label>
+              <select id="category" name="category" required>
+                <option value="ثقافي">ثقافي</option>
+                <option value="رياضي">رياضي</option>
+                <option value="تعليمي">تعليمي</option>
+                <option value="مجتمعي">مجتمعي</option>
+                <option value="صحي">صحي</option>
+                <option value="بيئي">بيئي</option>
+                <option value="فني">فني</option>
+                <option value="تجاري">تجاري</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="image">صورة الفعالية (اختياري)</label>
+            <input type="file" id="image" name="image" accept="image/*" />
+            <small class="form-hint">يمكنك رفع صورة للفعالية (JPG, PNG, GIF)</small>
+          </div>
+          <div class="button-row">
+            <button type="submit" class="button primary" id="submitButton">إرسال الفعالية</button>
+            <button type="button" class="button secondary" id="cancelEditBtn" hidden>إلغاء التعديل</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="section-header">
+          <h2>قائمة الفعاليات</h2>
+          <p id="eventCount">تحميل الفعاليات...</p>
+        </div>
+
+        <!-- Search and Filter Section -->
+        <div class="search-filter-section">
+          <div class="search-group">
+            <input type="text" id="searchInput" placeholder="البحث في الفعاليات..." class="search-input">
+            <button type="button" id="clearSearch" class="button small secondary">مسح</button>
+          </div>
+          <div class="filter-group">
+            <label for="categoryFilter">تصفية حسب الفئة:</label>
+            <select id="categoryFilter" class="filter-select">
+              <option value="">جميع الفئات</option>
+              <option value="ثقافي">ثقافي</option>
+              <option value="رياضي">رياضي</option>
+              <option value="تعليمي">تعليمي</option>
+              <option value="مجتمعي">مجتمعي</option>
+              <option value="صحي">صحي</option>
+              <option value="بيئي">بيئي</option>
+              <option value="فني">فني</option>
+              <option value="تجاري">تجاري</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="dateFilter">تصفية حسب التاريخ:</label>
+            <select id="dateFilter" class="filter-select">
+              <option value="">جميع التواريخ</option>
+              <option value="upcoming">القادمة فقط</option>
+              <option value="past">الماضية فقط</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="showArchived" class="checkbox-input">
+              عرض الأحداث المؤرشفة
+            </label>
+          </div>
+          <div class="view-toggle">
+            <button type="button" id="gridViewBtn" class="button small secondary active" title="عرض الشبكة">⊞</button>
+            <button type="button" id="calendarViewBtn" class="button small secondary" title="عرض التقويم">📅</button>
+          </div>
+        </div>
+
+        <div id="eventsList" class="events-grid"></div>
+
+        <!-- Calendar View -->
+        <div id="calendarView" class="calendar-container hidden">
+          <div class="calendar-header">
+            <button type="button" id="prevMonth" class="button small secondary">←</button>
+            <h3 id="calendarTitle">الشهر الحالي</h3>
+            <button type="button" id="nextMonth" class="button small secondary">→</button>
+          </div>
+          <div class="calendar-grid">
+            <div class="calendar-day-header">الأحد</div>
+            <div class="calendar-day-header">الاثنين</div>
+            <div class="calendar-day-header">الثلاثاء</div>
+            <div class="calendar-day-header">الأربعاء</div>
+            <div class="calendar-day-header">الخميس</div>
+            <div class="calendar-day-header">الجمعة</div>
+            <div class="calendar-day-header">السبت</div>
+            <div id="calendarDays" class="calendar-days"></div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2026 فعالية درعا - موقع عرض الفعاليات المحلية</p>
+  </footer>
+
+  <!-- Notification Settings Modal -->
+  <div id="notificationModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>إعدادات الإشعارات</h3>
+        <button type="button" class="modal-close" id="closeNotificationModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="notification-settings">
+          <div class="setting-item">
+            <label class="setting-label">
+              <input type="checkbox" id="enableNotifications" class="setting-checkbox">
+              <span class="setting-text">تفعيل إشعارات المتصفح</span>
+            </label>
+            <p class="setting-description">احصل على إشعارات عند إضافة فعاليات جديدة أو فعاليات قادمة</p>
+          </div>
+          <div class="setting-item">
+            <label class="setting-label">
+              <input type="checkbox" id="upcomingEventsNotifications" class="setting-checkbox">
+              <span class="setting-text">إشعارات الفعاليات القادمة</span>
+            </label>
+            <p class="setting-description">أرسل إشعاراً قبل يوم من الفعالية</p>
+          </div>
+          <div class="setting-item">
+            <label class="setting-label">
+              <input type="checkbox" id="newEventsNotifications" class="setting-checkbox">
+              <span class="setting-text">إشعارات الفعاليات الجديدة</span>
+            </label>
+            <p class="setting-description">أرسل إشعاراً عند إضافة فعالية جديدة</p>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="button primary" id="saveNotificationSettings">حفظ الإعدادات</button>
+          <button type="button" class="button secondary" id="cancelNotificationSettings">إلغاء</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="mapModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>تحديد الموقع على الخريطة</h3>
+        <button type="button" class="modal-close" id="closeMapModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="map" style="height: 400px; width: 100%;"></div>
+        <div class="map-controls">
+          <button type="button" class="button primary" id="confirmLocation">تأكيد الموقع</button>
+          <button type="button" class="button secondary" id="cancelLocation">إلغاء</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js?v=3"></script>
+</body>
+</html>
