@@ -24,6 +24,7 @@ const reviewRating = document.getElementById('reviewRating');
 const reviewContent = document.getElementById('reviewContent');
 const submitReviewBtn = document.getElementById('submitReviewBtn');
 const reviewMessage = document.getElementById('reviewMessage');
+const attendBtn = document.getElementById('attendBtn');
 
 let countdownInterval = null;
 let currentEvent = null;
@@ -186,6 +187,16 @@ const renderEvent = async (event) => {
     bookButton.classList.remove('disabled');
   }
 
+  // Show attend button for logged-in users who haven't marked attendance yet
+  const token = getAuthToken();
+  if (attendBtn) {
+    if (token && !event.userHasAttendance) {
+      attendBtn.classList.remove('hidden');
+    } else {
+      attendBtn.classList.add('hidden');
+    }
+  }
+
   const response = await fetchWithAuth(`/api/events/${event.id}/seat-map`);
   if (response.ok) {
     const data = await response.json();
@@ -215,6 +226,35 @@ const renderEvent = async (event) => {
 
   loadComments();
 };
+
+// Mark attendance (RSVP) as 'attending' so users can be allowed to review
+attendBtn?.addEventListener('click', async () => {
+  try {
+    attendBtn.disabled = true;
+    const resp = await fetchWithAuth(`/api/events/${encodeURIComponent(eventId)}/rsvp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'attending' })
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      reviewMessage.textContent = data.error || 'فشل تحديث حالة الحضور';
+      attendBtn.disabled = false;
+      return;
+    }
+    // Update UI: show review ability and update attendees count
+    event.userHasAttendance = true;
+    event.userCanReview = true;
+    eventAttendance.textContent = `${data.attendingCount || 0} تأكيد حضور`;
+    attendBtn.classList.add('hidden');
+    openReviewFormBtn.classList.remove('hidden');
+    reviewMessage.textContent = 'تم تأكيد حضورك، يمكنك الآن إضافة مراجعة.';
+    reviewForm.classList.remove('hidden');
+  } catch (err) {
+    reviewMessage.textContent = err.message || 'خطأ أثناء الاتصال بالخادم';
+    attendBtn.disabled = false;
+  }
+});
 
 openReviewFormBtn?.addEventListener('click', () => {
   reviewForm.classList.remove('hidden');

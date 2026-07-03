@@ -18,6 +18,7 @@
   </header>
 
   <main class="container page-panel">
+    <!-- Event details page: shows a single event, its media, map, ticket options, and reviews -->
     <section class="panel panel-highlight" id="eventDetailsPanel">
       <div id="eventLoading" class="loading-state">جارٍ تحميل تفاصيل الفعالية...</div>
       <div id="eventDetails" class="event-details hidden">
@@ -50,18 +51,22 @@
           <h3>الموقع الجغرافي</h3>
           <div id="eventMap" class="event-map"></div>
         </div>
+        <!-- Ticket pricing and booking area for the event -->
         <section class="ticket-pricing-section">
           <h3>أسعار التذاكر</h3>
           <div id="ticketPrices" class="ticket-prices"></div>
           <div class="button-row">
             <a id="bookButton" class="button primary" href="#">احجز الآن</a>
+            <button id="attendBtn" class="button secondary hidden">تأكيد الحضور</button>
           </div>
         </section>
+        <!-- User review section: authenticated users can add ratings and comments here -->
         <section class="reviews-section">
           <div class="section-header">
             <h3>أضف تقييمك</h3>
+            <button id="openReviewFormBtn" class="button secondary small hidden">أضف تقييم</button>
           </div>
-          <p id="loginNotice" class="muted-text hidden">يرجى تسجيل الدخول لإرسال تقييم.</p>
+          <p id="loginNotice" class="muted-text hidden">يرجى تسجيل الدخول لإرسال تقييم. <a href="/">اذهب إلى صفحة الدخول</a></p>
           <div id="reviewForm" class="panel panel-secondary hidden">
             <div class="form-group">
               <label for="reviewRating">تقييم</label>
