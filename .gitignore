@@ -2,3 +2,6 @@ node_modules/
 /db/events.db
 npm-debug.log*
 .DS_Store
+__pycache__/
+*.py[cod]
+public/uploads/

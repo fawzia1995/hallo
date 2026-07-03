@@ -15,6 +15,7 @@ let currentEvent = null;
 let currentSeatMap = null;
 let selectedSeat = null;
 
+// Retrieve the authenticated session token from browser storage for API requests.
 const getAuthToken = () => {
   try {
     const session = JSON.parse(localStorage.getItem('eventAppSession') || 'null');
@@ -24,6 +25,7 @@ const getAuthToken = () => {
   }
 };
 
+// Perform authenticated network requests to the API using the saved token.
 const fetchWithAuth = (url, options = {}) => {
   const headers = options.headers || {};
   const token = getAuthToken();
@@ -33,11 +35,13 @@ const fetchWithAuth = (url, options = {}) => {
   return fetch(url, { ...options, headers });
 };
 
+// Format a timestamp into Arabic date and time for the checkout summary.
 const formatDate = (value) => {
   const date = new Date(value);
   return new Intl.DateTimeFormat('ar-EG', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
 };
 
+// Render the event summary details on the checkout page.
 const renderEventSummary = (event) => {
   eventSummary.innerHTML = `
     <div class="checkout-summary-card">
@@ -51,6 +55,7 @@ const renderEventSummary = (event) => {
   `;
 };
 
+// Populate the ticket type dropdown with available seat and virtual ticket options.
 const renderPriceOptions = (event, seatMap) => {
   ticketTypeSelect.innerHTML = '';
   const optionSet = new Set();
@@ -71,6 +76,7 @@ const renderPriceOptions = (event, seatMap) => {
   }
 };
 
+// Update the displayed ticket price when the user changes the ticket selection.
 const updateTicketPrice = () => {
   const selectedType = ticketTypeSelect.value;
   if (selectedType === 'virtual') {
@@ -85,6 +91,7 @@ const updateTicketPrice = () => {
   ticketPriceInput.value = 'غير محدد';
 };
 
+// Render the seat selection grid for seat-based ticket categories.
 const renderSeatMap = (seatMap) => {
   currentSeatMap = seatMap;
   if (!seatMap || !seatMap.categories?.length) {
@@ -106,11 +113,13 @@ const renderSeatMap = (seatMap) => {
   `).join('');
 };
 
+// Show a checkout-specific error message if the page or payment info fails to load.
 const showError = (message) => {
   checkoutLoading.textContent = message;
   checkoutContent.classList.add('hidden');
 };
 
+// Load event details and seat map for the checkout page when the page opens.
 const loadCheckout = async () => {
   if (!eventId) {
     showError('لا يوجد معرف فعالية صالح في الرابط.');

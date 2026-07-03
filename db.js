@@ -1,3 +1,5 @@
+// This module sets up the local SQLite database directory and exports a single shared connection.
+// It is used by the server to store events, users, tickets, comments, and other application data.
 const fs = require('fs');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();

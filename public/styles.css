@@ -1,3 +1,4 @@
+/* Theme variables for light and dark modes. These CSS custom properties control the main palette. */
 :root {
   --bg: #f8fafc;
   --card: #ffffff;
@@ -8,6 +9,7 @@
   --border: #e2e8f0;
 }
 
+/* Dark theme overrides for the same CSS variables. */
 [data-theme="dark"] {
   --bg: #0f172a;
   --card: #1e293b;
@@ -18,6 +20,7 @@
   --border: #334155;
 }
 
+/* Global reset and base layout styles. */
 * {
   box-sizing: border-box;
 }
@@ -51,6 +54,7 @@ body::before {
   pointer-events: none;
 }
 
+/* Decorative background layers for the application UI. */
 body::after {
   content: '';
   position: fixed;
@@ -81,6 +85,7 @@ body {
   min-height: 100vh;
 }
 
+/* Splash screen shown while the app loads and initializes. */
 .app-splash {
   position: fixed;
   inset: 0;
@@ -151,6 +156,7 @@ body {
   padding: 20px;
 }
 
+/* Main site header styling for branding and page title area. */
 .site-header {
   background: linear-gradient(135deg, #2563eb 0%, #38bdf8 50%, #f97316 100%);
   background-size: 300% 300%;
@@ -491,7 +497,7 @@ textarea {
 }
 
 .role-panel {
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 18px;
   margin: 18px 0 24px;
@@ -500,12 +506,82 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
 }
 
 .panel-actions {
   display: flex;
   gap: 8px;
   align-items: center;
+  position: relative;
+}
+
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.notification-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(360px, calc(100vw - 24px));
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+  z-index: 40;
+  overflow: hidden;
+}
+
+.notification-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.notifications-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.notification-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  margin-bottom: 8px;
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.notification-item.unread {
+  border-color: rgba(37, 99, 235, 0.26);
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.notification-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.notification-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .role-panel p {
@@ -1445,6 +1521,65 @@ textarea {
   text-align: center;
   color: var(--muted);
   padding: 20px 0 40px;
+}
+
+.star-rating-input {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0 8px;
+}
+
+.star-input-btn {
+  background: transparent;
+  border: 0;
+  color: var(--border);
+  cursor: pointer;
+  font-size: 1.15rem;
+  padding: 0;
+}
+
+.star-input-btn.active,
+.star-input-btn:hover {
+  color: var(--accent);
+}
+
+.star-rating {
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.rating-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 8px 0 12px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.rating-count {
+  opacity: 0.8;
+}
+
+.comment-rating-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.rating-selector {
+  margin-bottom: 10px;
+}
+
+.rating-label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 4px;
 }
 
 @media (max-width: 840px) {

@@ -18,6 +18,7 @@
   </header>
 
   <main class="container page-panel">
+    <!-- Profile page: shows active tickets and ticket history for the logged-in user -->
     <section class="panel panel-highlight">
       <div class="section-header">
         <h2>تذاكري الحالية</h2>
@@ -27,6 +28,7 @@
       <div id="activeTickets" class="tickets-list"></div>
     </section>
 
+    <!-- Historical ticket archive section: previous events the user attended or purchased tickets for -->
     <section class="panel panel-highlight">
       <div class="section-header">
         <h2>أرشيف الفعاليات</h2>
@@ -35,6 +37,7 @@
       <div id="historyTickets" class="tickets-list"></div>
     </section>
 
+    <!-- Login prompt shown when the profile page is accessed without authentication -->
     <section class="panel panel-highlight hidden" id="profileLoginNotice">
       <p class="muted-text">يرجى تسجيل الدخول من <a href="/">الصفحة الرئيسية</a> للوصول إلى حسابك.</p>
     </section>

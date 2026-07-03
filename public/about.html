@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="aboutPageTitle">عن موقع فعاليات درعا</title>
+  <link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-content">
+      <div>
+        <a href="/" class="button secondary small" data-i18n="home">الرئيسية</a>
+        <a href="/profile.html" class="button secondary small" data-i18n="profile">صفحتي</a>
+      </div>
+      <h1 data-i18n="aboutPageTitle">عن موقع فعاليات درعا</h1>
+      <button type="button" class="button secondary small" id="langToggle">EN</button>
+    </div>
+  </header>
+
+  <main class="container page-panel">
+    <section class="panel panel-highlight">
+      <h2 data-i18n="aboutPageSubtitle">منصة تجمع بين الفعاليات المحلية والخبرة المجتمعية.</h2>
+      <p data-i18n="aboutLead">يهدف هذا الموقع إلى تسهيل اكتشاف الفعاليات في محافظة درعا ومشاركة المجتمع فيها.</p>
+
+      <div class="stats-grid">
+        <article class="stat-card">
+          <div class="stat-number">⭐</div>
+          <div class="stat-label" data-i18n="aboutFeature2Title">التقييمات والتعليقات</div>
+          <p data-i18n="aboutFeature2Text">يمكن للزوار ترك تقييمات وتعليقات لتمكين المجتمع من اختيار الأفضل.</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-number">🗂️</div>
+          <div class="stat-label" data-i18n="aboutFeature1Title">إدارة الفعاليات</div>
+          <p data-i18n="aboutFeature1Text">إضافة وتعديل وحذف الفعاليات بسهولة عبر لوحة إدارة واضحة.</p>
+        </article>
+        <article class="stat-card">
+          <div class="stat-number">🌍</div>
+          <div class="stat-label" data-i18n="aboutFeature3Title">اللغة المزدوجة</div>
+          <p data-i18n="aboutFeature3Text">واجهة بسيطة يمكن استخدامها بالعربية أو الإنجليزية بلمسة واحدة.</p>
+        </article>
+      </div>
+
+      <p class="muted-text" data-i18n="aboutFooter">مصمم لتجربة سلسة للمستخدمين والإدارة على حد سواء.</p>
+    </section>
+  </main>
+
+  <script src="/language.js"></script>
+  <script>
+    document.getElementById('langToggle')?.addEventListener('click', () => {
+      const nextLang = window.appI18n?.getLanguage?.() === 'ar' ? 'en' : 'ar';
+      window.appI18n?.setLanguage?.(nextLang);
+    });
+  </script>
+</body>
+</html>

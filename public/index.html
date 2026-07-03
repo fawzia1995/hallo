@@ -22,6 +22,7 @@
     </div>
   </div>
 
+  <!-- Main application header with branding and primary navigation actions -->
   <header class="site-header">
     <div class="container">
       <div class="header-content">
@@ -30,18 +31,20 @@
           <span class="hamburger-line"></span>
           <span class="hamburger-line"></span>
         </button>
-        <h1>موقع فعاليات محافظة درعا</h1>
+        <h1 data-i18n="siteTitle">موقع فعاليات محافظة درعا</h1>
         <div class="header-actions">
-          <a href="/profile.html" class="button secondary small" id="profileLink">صفحتي</a>
-          <button type="button" class="button secondary small hidden" id="installButton">تثبيت التطبيق</button>
+          <a href="/about.html" class="button secondary small" data-i18n="about">عن الموقع</a>
+          <a href="/profile.html" class="button secondary small" id="profileLink" data-i18n="profile">صفحتي</a>
+          <button type="button" class="button secondary small hidden" id="installButton" data-i18n="install">تثبيت التطبيق</button>
+          <button type="button" class="button secondary small" id="langToggle" data-lang="ar">EN</button>
           <button type="button" class="button secondary small" id="themeToggle" title="تبديل الوضع المظلم">🌙</button>
         </div>
       </div>
-      <p class="header-subtitle">سجل دخول لعرض الفعاليات أو لإدارة المحتوى إذا كنت مدير.</p>
+      <p class="header-subtitle" data-i18n="siteSubtitle">سجل دخول لعرض الفعاليات أو لإدارة المحتوى إذا كنت مدير.</p>
     </div>
   </header>
 
-  <!-- Mobile Navigation Menu -->
+  <!-- Mobile navigation overlay used on small screens to switch between authentication panels -->
   <nav class="mobile-nav" id="mobileNav">
     <div class="mobile-nav-content">
       <div class="mobile-nav-header">
@@ -58,30 +61,32 @@
   </nav>
 
   <main class="container">
+    <!-- Login panel: shows the default authentication form for existing users -->
     <section id="loginPanel" class="panel panel-highlight">
-      <h2>تسجيل الدخول</h2>
+      <h2 data-i18n="login">تسجيل الدخول</h2>
       <form id="loginForm" class="login-form">
         <div class="form-group">
-          <label for="username">اسم المستخدم</label>
+          <label for="username" data-i18n="username">اسم المستخدم</label>
           <input type="text" id="username" name="username" placeholder="admin أو user" required />
         </div>
         <div class="form-group">
-          <label for="password">كلمة المرور</label>
+          <label for="password" data-i18n="password">كلمة المرور</label>
           <input type="password" id="password" name="password" placeholder="كلمة المرور" required />
         </div>
         <div class="button-row">
-          <button type="submit" class="button primary">دخول</button>
+          <button type="submit" class="button primary" data-i18n="loginBtn">دخول</button>
         </div>
       </form>
       <p id="loginError" class="error-text"></p>
       <p class="login-hint">إذا كان لديك حساب، استخدم بياناتك الشخصية لتسجيل الدخول.</p>
-      <p class="login-hint">ليس لديك حساب؟ <a href="#" id="showRegisterLink">إنشاء حساب جديد</a></p>
-      <p class="login-hint">لم يصلك رابط التفعيل؟ <a href="#" id="showResendLink">إعادة إرسال رابط التفعيل</a></p>
-      <p class="login-hint">نسيت كلمة المرور؟ <a href="#" id="showForgotLink">إعادة تعيين كلمة المرور</a></p>
+      <p class="login-hint">ليس لديك حساب؟ <a href="#" id="showRegisterLink" data-i18n="createAccountLink">إنشاء حساب جديد</a></p>
+      <p class="login-hint">لم يصلك رابط التفعيل؟ <a href="#" id="showResendLink" data-i18n="resendActivationLink">إعادة إرسال رابط التفعيل</a></p>
+      <p class="login-hint">نسيت كلمة المرور؟ <a href="#" id="showForgotLink" data-i18n="forgotPasswordLink">إعادة تعيين كلمة المرور</a></p>
     </section>
 
+    <!-- Registration panel: new users can create an account and receive activation email -->
     <section id="registerPanel" class="panel panel-highlight hidden">
-      <h2>إنشاء حساب جديد</h2>
+      <h2 data-i18n="register">إنشاء حساب جديد</h2>
       <form id="registerForm" class="login-form">
         <div class="form-group">
           <label for="regUsername">اسم المستخدم</label>
@@ -96,53 +101,65 @@
           <input type="password" id="regPassword" name="password" placeholder="كلمة مرور قوية (6 أحرف على الأقل)" required />
         </div>
         <div class="button-row">
-          <button type="submit" class="button primary">إنشاء الحساب</button>
+          <button type="submit" class="button primary" data-i18n="createAccountBtn">إنشاء الحساب</button>
         </div>
       </form>
       <p id="registerError" class="error-text"></p>
-      <p class="login-hint">لديك حساب بالفعل؟ <a href="#" id="showLoginLink">تسجيل الدخول</a></p>
+      <p class="login-hint">لديك حساب بالفعل؟ <a href="#" id="showLoginLink" data-i18n="loginLink">تسجيل الدخول</a></p>
     </section>
 
+    <!-- Activation resend panel: use this when the initial email activation link was not received -->
     <section id="resendPanel" class="panel panel-highlight hidden">
-      <h2>إعادة إرسال رابط التفعيل</h2>
+      <h2 data-i18n="resendActivation">إعادة إرسال رابط التفعيل</h2>
       <form id="resendForm" class="login-form">
         <div class="form-group">
           <label for="resendEmail">البريد الإلكتروني</label>
           <input type="email" id="resendEmail" name="email" placeholder="example@mail.com" required />
         </div>
         <div class="button-row">
-          <button type="submit" class="button primary">إرسال الرابط</button>
+          <button type="submit" class="button primary" data-i18n="sendLinkBtn">إرسال الرابط</button>
         </div>
       </form>
       <p id="resendError" class="error-text"></p>
-      <p class="login-hint">لديك حساب بالفعل؟ <a href="#" id="showLoginLink2">العودة لتسجيل الدخول</a></p>
+      <p class="login-hint">لديك حساب بالفعل؟ <a href="#" id="showLoginLink2" data-i18n="backToLogin">العودة لتسجيل الدخول</a></p>
     </section>
 
+    <!-- Password reset panel: user can request a reset link if they forgot their password -->
     <section id="forgotPanel" class="panel panel-highlight hidden">
-      <h2>نسيت كلمة المرور</h2>
+      <h2 data-i18n="forgotPassword">نسيت كلمة المرور</h2>
       <form id="forgotForm" class="login-form">
         <div class="form-group">
           <label for="forgotEmail">البريد الإلكتروني</label>
           <input type="email" id="forgotEmail" name="email" placeholder="example@mail.com" required />
         </div>
         <div class="button-row">
-          <button type="submit" class="button primary">إرسال رابط إعادة التعيين</button>
+          <button type="submit" class="button primary" data-i18n="resetPasswordBtn">إرسال رابط إعادة التعيين</button>
         </div>
       </form>
       <p id="forgotError" class="error-text"></p>
-      <p class="login-hint">تذكرت كلمة المرور؟ <a href="#" id="showLoginLink3">العودة لتسجيل الدخول</a></p>
+      <p class="login-hint">تذكرت كلمة المرور؟ <a href="#" id="showLoginLink3" data-i18n="backToLogin">العودة لتسجيل الدخول</a></p>
     </section>
 
+    <!-- Main authenticated application panel: becomes visible after successful login -->
     <section id="appPanel" class="hidden">
       <section class="role-panel">
         <div>
-          <p id="welcomeMessage">مرحبا بك</p>
+          <p id="welcomeMessage" data-i18n="welcome">مرحبا بك</p>
           <p id="roleMessage"></p>
         </div>
         <div class="panel-actions">
+          <button type="button" class="button secondary small" id="notificationsBell" title="الإشعارات">
+            🔔 <span class="notification-badge hidden" id="notificationBadge">0</span>
+          </button>
+          <div id="notificationPanel" class="notification-panel hidden">
+            <div class="notification-panel-header">
+              <strong>الإشعارات</strong>
+              <button type="button" class="button small secondary" id="markNotificationsReadBtn">تحديد الكل كمقروء</button>
+            </div>
+            <div id="notificationsList" class="notifications-list"></div>
+          </div>
           <button type="button" class="button secondary small" id="notificationSettingsBtn" title="إعدادات الإشعارات">🔔⚙️</button>
-          <button type="button" class="button secondary small" id="themeToggle" title="تبديل الوضع المظلم">🌙</button>
-          <button type="button" class="button secondary" id="logoutButton">تسجيل الخروج</button>
+          <button type="button" class="button secondary" id="logoutButton" data-i18n="logout">تسجيل الخروج</button>
         </div>
       </section>
 
@@ -434,6 +451,15 @@
             </select>
           </div>
           <div class="filter-group">
+            <label for="sortFilter">ترتيب النتائج:</label>
+            <select id="sortFilter" class="filter-select">
+              <option value="newest">الأحدث أولاً</option>
+              <option value="oldest">الأقدم أولاً</option>
+              <option value="popular">الأكثر شعبية</option>
+              <option value="budget">الأقل تكلفة</option>
+            </select>
+          </div>
+          <div class="filter-group">
             <label class="checkbox-label">
               <input type="checkbox" id="showArchived" class="checkbox-input">
               عرض الأحداث المؤرشفة
@@ -559,6 +585,7 @@
     </div>
   </div>
 
+  <script src="language.js"></script>
   <script src="script.js?v=4"></script>
 </body>
 </html>

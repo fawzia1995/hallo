@@ -3,6 +3,7 @@ const historyTicketsContainer = document.getElementById('historyTickets');
 const profileLoginNotice = document.getElementById('profileLoginNotice');
 const logoutButton = document.getElementById('logoutButton');
 
+// Retrieve the saved authentication token from localStorage for profile API requests.
 const getAuthToken = () => {
   try {
     const session = JSON.parse(localStorage.getItem('eventAppSession') || 'null');
@@ -12,6 +13,7 @@ const getAuthToken = () => {
   }
 };
 
+// Perform authenticated fetch requests from the profile page.
 const fetchWithAuth = (url, options = {}) => {
   const headers = options.headers || {};
   const token = getAuthToken();
@@ -21,6 +23,7 @@ const fetchWithAuth = (url, options = {}) => {
   return fetch(url, { ...options, headers });
 };
 
+// Format dates for display in the profile tickets list.
 const formatDate = (value) => {
   const date = new Date(value);
   return new Intl.DateTimeFormat('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
@@ -28,6 +31,7 @@ const formatDate = (value) => {
 
 const activeTicketsNotice = document.getElementById('activeTicketsNotice');
 
+// Show the login prompt on the profile page when there is no authenticated user.
 const showLoginMessage = () => {
   profileLoginNotice.classList.remove('hidden');
   activeTicketsContainer.innerHTML = '';
@@ -35,6 +39,7 @@ const showLoginMessage = () => {
   activeTicketsNotice.classList.add('hidden');
 };
 
+// Create the ticket card markup for display in the user profile page.
 const renderTicketCard = (ticket) => {
   const eventDate = ticket.eventDate ? formatDate(ticket.eventDate) : 'غير محدد';
   const price = Math.round(ticket.priceCents / 100);
@@ -60,6 +65,7 @@ const renderTicketCard = (ticket) => {
   `;
 };
 
+// Load the authenticated user's active and history tickets for the profile page.
 const loadProfileData = async () => {
   const token = getAuthToken();
   if (!token) {

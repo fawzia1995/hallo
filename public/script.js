@@ -5,6 +5,7 @@ const passwordInput = document.getElementById('password');
 const loginError = document.getElementById('loginError');
 const appPanel = document.getElementById('appPanel');
 
+// Display a fatal error message to the user when the app cannot continue.
 const showFatalError = (message) => {
   const splash = document.getElementById('appSplash');
   if (!splash) return;
@@ -83,12 +84,19 @@ const dateFilter = document.getElementById('dateFilter');
 const districtFilter = document.getElementById('districtFilter');
 const budgetFilter = document.getElementById('budgetFilter');
 const attendanceFilter = document.getElementById('attendanceFilter');
+const sortFilter = document.getElementById('sortFilter');
 const showArchived = document.getElementById('showArchived');
 const weeklyEvents = document.getElementById('weeklyEvents');
 const trendingEvents = document.getElementById('trendingEvents');
 
 // Theme Elements
 const themeToggle = document.getElementById('themeToggle');
+const langToggle = document.getElementById('langToggle');
+const notificationsBell = document.getElementById('notificationsBell');
+const notificationBadge = document.getElementById('notificationBadge');
+const notificationPanel = document.getElementById('notificationPanel');
+const notificationsList = document.getElementById('notificationsList');
+const markNotificationsReadBtn = document.getElementById('markNotificationsReadBtn');
 const notificationToggle = document.getElementById('notificationToggle');
 const notificationSettingsBtn = document.getElementById('notificationSettingsBtn');
 const notificationModal = document.getElementById('notificationModal');
@@ -156,6 +164,7 @@ let allEvents = []; // Store all events for filtering
 let removedMediaIds = [];
 let commentPageState = {};
 let adminUsers = [];
+let notifications = [];
 let notificationsEnabled = false;
 let upcomingEventsNotificationsEnabled = false;
 let newEventsNotificationsEnabled = false;
@@ -166,6 +175,30 @@ const attendanceStatusLabels = {
   attending: 'سأحضر',
   maybe: 'ربما',
   declined: 'غير مهتم'
+};
+
+const getCurrentLanguage = () => window.appI18n?.getLanguage?.() || localStorage.getItem('eventAppLanguage') || 'ar';
+const translate = (key) => window.appI18n?.t?.(key, getCurrentLanguage()) || key;
+
+const renderStars = (value = 0, max = 5) => {
+  const numericValue = Number(value) || 0;
+  const safeValue = Math.max(0, Math.min(max, numericValue));
+  const fullStars = Math.round(safeValue);
+  const emptyStars = Math.max(0, max - fullStars);
+  return `<span class="star-rating" aria-label="${safeValue} من ${max}">${'★'.repeat(fullStars)}${'☆'.repeat(emptyStars)}</span>`;
+};
+
+const renderRatingSummary = (event) => {
+  const rating = Number(event.averageRating || 0);
+  const count = Number(event.ratingCount || 0);
+  const label = rating > 0 ? `${rating.toFixed(1)} / 5` : translate('noRatings');
+  return `
+    <div class="rating-summary">
+      ${renderStars(rating)}
+      <span>${label}</span>
+      <span class="rating-count">${count} ${translate('reviewsCount')}</span>
+    </div>
+  `;
 };
 
 const formatDate = (value) => {
@@ -179,6 +212,7 @@ const formatDate = (value) => {
 
 let ticketModalEventId = null;
 
+// Open the ticket reservation modal and load seat map data for the selected event.
 const openTicketModal = async (eventId, defaultVirtual = false) => {
   ticketModalEventId = eventId;
   ticketResult.innerHTML = '';
@@ -215,6 +249,7 @@ const openTicketModal = async (eventId, defaultVirtual = false) => {
   }
 };
 
+// Close the ticket modal and clear temporary selection state.
 const closeTicketModalHandler = () => {
   if (ticketModal) {
     ticketModal.classList.add('hidden');
@@ -225,6 +260,7 @@ const closeTicketModalHandler = () => {
   ticketResult.innerHTML = '';
 };
 
+// Update the ticket modal form fields when the user chooses virtual or seat-based tickets.
 const updateTicketModalInputs = () => {
   const isVirtual = isVirtualTicketCheckbox.checked;
   streamDetails.classList.toggle('hidden', !isVirtual);
@@ -234,6 +270,7 @@ const updateTicketModalInputs = () => {
   }
 };
 
+// Render the visual seat map buttons for the selected event in the ticket modal.
 const renderSeatMap = () => {
   if (!currentTicketSeatMap || !currentTicketSeatMap.categories) {
     seatMapContainer.innerHTML = '<p>لا يوجد مخطط مقاعد متاح حالياً.</p>';
@@ -254,6 +291,7 @@ const renderSeatMap = () => {
   `).join('');
 };
 
+// Mark a seat as selected and update the ticket price for that seat category.
 const selectSeat = (categoryId, seatNumber) => {
   selectedSeatInfo = { seatCategory: categoryId, seatNumber };
   currentTicketSeatMap.categories.forEach((category) => {
@@ -268,6 +306,7 @@ const selectSeat = (categoryId, seatNumber) => {
   ticketPriceInput.value = category ? category.priceCents : ticketPriceInput.value;
 };
 
+// Submit the ticket reservation request to the backend and display the result.
 const reserveTicket = async () => {
   if (!currentTicketEvent) {
     return;
@@ -321,6 +360,7 @@ const reserveTicket = async () => {
   }
 };
 
+// Persist the current user session information in browser storage.
 const saveSession = () => {
   localStorage.setItem('eventAppSession', JSON.stringify({ authToken, currentRole, currentUser }));
 };
@@ -338,6 +378,7 @@ const formatNumber = (value) => {
   return new Intl.NumberFormat('ar-EG').format(Number(value || 0));
 };
 
+// Render a simple horizontal bar chart inside the given container element.
 const renderBarChart = (container, items) => {
   if (!container) return;
   container.innerHTML = '';
@@ -409,6 +450,7 @@ const renderAdminAnalytics = (data) => {
   renderTopEvents(data.topEvents);
 };
 
+// Load analytics data for admins and update the dashboard charts.
 const loadAnalytics = async () => {
   if (currentRole !== 'admin') return;
 
@@ -437,6 +479,7 @@ const stopAnalyticsPolling = () => {
   }
 };
 
+// Restore the user session from localStorage when the page loads.
 const loadSession = () => {
   try {
     const session = JSON.parse(localStorage.getItem('eventAppSession') || 'null');
@@ -460,12 +503,16 @@ const clearSession = () => {
 };
 
 // Theme functions
+// Manage the current visual theme for the application (light/dark).
 const getCurrentTheme = () => localStorage.getItem('theme') || 'light';
 const setTheme = (theme) => {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('theme', theme);
-  themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-  themeToggle.title = theme === 'dark' ? 'الوضع الفاتح' : 'الوضع المظلم';
+  const resolvedTheme = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', resolvedTheme);
+  localStorage.setItem('theme', resolvedTheme);
+  if (themeToggle) {
+    themeToggle.textContent = resolvedTheme === 'dark' ? '☀️' : '🌙';
+    themeToggle.title = resolvedTheme === 'dark' ? 'الوضع الفاتح' : 'الوضع المظلم';
+  }
 };
 
 const toggleTheme = () => {
@@ -475,6 +522,7 @@ const toggleTheme = () => {
 };
 
 // Notification functions
+// Request permission from the browser to show push notifications.
 const requestNotificationPermission = async () => {
   if ('Notification' in window) {
     const permission = await Notification.requestPermission();
@@ -483,9 +531,64 @@ const requestNotificationPermission = async () => {
   return false;
 };
 
+// Display a local browser notification if permission has been granted.
 const showNotification = (title, body, icon = '/favicon.ico') => {
   if ('Notification' in window && Notification.permission === 'granted') {
     new Notification(title, { body, icon });
+  }
+};
+
+const renderNotifications = () => {
+  if (!notificationBadge || !notificationsList) return;
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
+  notificationBadge.textContent = unreadCount > 0 ? unreadCount : '';
+  notificationBadge.classList.toggle('hidden', unreadCount === 0);
+
+  if (!notifications.length) {
+    notificationsList.innerHTML = '<p class="muted-text">لا توجد إشعارات بعد.</p>';
+    return;
+  }
+
+  notificationsList.innerHTML = notifications.map((item) => `
+    <article class="notification-item ${item.isRead ? '' : 'unread'}">
+      <strong>${escapeHtml(item.title)}</strong>
+      <p>${escapeHtml(item.body)}</p>
+      <p class="muted-text">${item.createdAt ? new Date(item.createdAt * 1000).toLocaleString('ar-EG') : ''}</p>
+    </article>
+  `).join('');
+};
+
+const loadNotifications = async () => {
+  if (!authToken || !notificationBadge || !notificationsList) return;
+  try {
+    const response = await fetchWithAuth('/api/notifications');
+    if (!response.ok) return;
+    notifications = await response.json();
+    renderNotifications();
+  } catch (error) {
+    console.warn('تعذر تحميل الإشعارات', error);
+  }
+};
+
+const toggleNotificationsPanel = async () => {
+  if (!notificationPanel) return;
+  const isHidden = notificationPanel.classList.contains('hidden');
+  notificationPanel.classList.toggle('hidden', !isHidden);
+  if (isHidden) {
+    await loadNotifications();
+  }
+};
+
+const markNotificationsRead = async () => {
+  if (!authToken) return;
+  try {
+    const response = await fetchWithAuth('/api/notifications/mark-read', { method: 'POST' });
+    if (response.ok) {
+      notifications = notifications.map((item) => ({ ...item, isRead: true }));
+      renderNotifications();
+    }
+  } catch (error) {
+    console.warn('تعذر تحديث الإشعارات كمقروءة', error);
   }
 };
 
@@ -673,6 +776,7 @@ const loadNotificationSettings = () => {
 };
 
 // Mobile Navigation Functions
+// Toggle the mobile navigation panel open or closed.
 const toggleMobileMenu = () => {
   const isOpen = mobileNav.classList.contains('open');
   if (isOpen) {
@@ -1262,6 +1366,7 @@ if (seatMapContainer) {
   });
 }
 
+// Load the list of events from the backend and initialize filtering state.
 const loadEvents = async () => {
   try {
     const showArchivedParam = showArchived.checked ? '?archived=true' : '';
@@ -1277,12 +1382,14 @@ const loadEvents = async () => {
   }
 };
 
+// Apply all active search and filter criteria to the loaded event list.
 const applyFilters = async () => {
   const searchTerm = searchInput.value.toLowerCase().trim();
   const categoryValue = categoryFilter.value;
   const dateValue = dateFilter.value;
   const districtValue = districtFilter?.value.toLowerCase().trim();
   const budgetValue = budgetFilter?.value;
+  const sortValue = sortFilter?.value || 'newest';
 
   let filteredEvents = allEvents.filter(event => {
     // Search filter
@@ -1319,8 +1426,21 @@ const applyFilters = async () => {
     return matchesSearch && matchesCategory && matchesDate && matchesAttendance;
   });
 
-  eventCount.textContent = `عدد الفعاليات: ${filteredEvents.length} من ${allEvents.length}`;
-  eventsList.innerHTML = filteredEvents.length ? filteredEvents.map(renderEventCard).join('') : '<p>لا توجد فعاليات تطابق معايير البحث.</p>';
+  filteredEvents = filteredEvents.sort((a, b) => {
+    if (sortValue === 'oldest') {
+      return new Date(a.date) - new Date(b.date);
+    }
+    if (sortValue === 'popular') {
+      return (b.attendees || 0) - (a.attendees || 0);
+    }
+    if (sortValue === 'budget') {
+      return (Number(a.budgetCents || 0)) - (Number(b.budgetCents || 0));
+    }
+    return new Date(b.date) - new Date(a.date);
+  });
+
+  eventCount.textContent = `${translate('eventCountLabel')} ${filteredEvents.length} ${translate('of')} ${allEvents.length}`;
+  eventsList.innerHTML = filteredEvents.length ? filteredEvents.map(renderEventCard).join('') : `<p>${translate('noMatchingEvents')}</p>`;
   await loadCommentsForEvents();
   renderWeeklyEvents(filteredEvents);
   renderTrendingEvents(filteredEvents);
@@ -1385,6 +1505,7 @@ const renderTrendingEvents = (events) => {
     : '<p class="muted-text">لا توجد فعاليات رائجة حتى الآن.</p>';
 };
 
+// Build the HTML markup for a single event card shown in the event list.
 const renderEventCard = (event) => {
   const attendanceButtons = currentRole
     ? `
@@ -1459,6 +1580,7 @@ const renderEventCard = (event) => {
   return `
     <article class="event-card">
       <h3>${escapeHtml(event.title)}</h3>
+      ${renderRatingSummary(event)}
       ${mediaGallery}
       <p>${escapeHtml(event.description)}</p>
       <p><strong>المكان:</strong> ${escapeHtml(event.location)}</p>
@@ -1467,8 +1589,8 @@ const renderEventCard = (event) => {
       <p class="tag">${escapeHtml(event.category)} · ${escapeHtml(event.district || 'الكل')}</p>
       <p class="price-tag">الميزانية: ${event.budgetCents ? `${Math.round(event.budgetCents / 100)}$` : 'غير محددة'}</p>
       <time>التاريخ: ${formatDate(event.date)}</time>
-      <p class="attendees-info">المؤكدون: ${event.attendingCount ?? 0} · ربما: ${event.maybeCount ?? 0}</p>
-      <p class="comment-count">عدد التعليقات: ${event.commentCount ?? 0}</p>
+      <p class="attendees-info">${translate('confirmed')} ${event.attendingCount ?? 0} · ${translate('maybe')} ${event.maybeCount ?? 0}</p>
+      <p class="comment-count">${translate('commentsCount')} ${event.commentCount ?? 0}</p>
       ${attendanceButtons}
       ${ticketActions}
 
@@ -1483,16 +1605,23 @@ const renderEventCard = (event) => {
       </div>
 
       <section class="event-comments-wrapper">
-        <h4>تعليقات المجتمع</h4>
+        <h4>${translate('communityComments')}</h4>
         <div class="comment-list" id="comments-${event.id}">
-          <p class="muted-text">جارٍ تحميل التعليقات...</p>
+          <p class="muted-text">${translate('loadingComments')}</p>
         </div>
         ${currentRole ? `
           <div class="comment-form">
-            <textarea class="comment-input" data-event-id="${event.id}" placeholder="اكتب تعليقك هنا..."></textarea>
-            <button type="button" class="button small primary comment-submit-btn" data-event-id="${event.id}">أرسل التعليق</button>
+            <div class="rating-selector">
+              <span class="rating-label">${translate('yourRating')}</span>
+              <div class="star-rating-input" data-event-id="${event.id}">
+                ${[1, 2, 3, 4, 5].map((value) => `<button type="button" class="star-input-btn" data-rating="${value}" data-event-id="${event.id}" aria-label="${translate('rate')} ${value}">★</button>`).join('')}
+              </div>
+              <input type="hidden" class="comment-rating-input" data-event-id="${event.id}" value="0" />
+            </div>
+            <textarea class="comment-input" data-event-id="${event.id}" placeholder="${translate('commentPlaceholder')}"></textarea>
+            <button type="button" class="button small primary comment-submit-btn" data-event-id="${event.id}">${translate('submitComment')}</button>
           </div>
-        ` : '<p class="muted-text">سجل دخول لتتمكن من المشاركة بالتعليقات.</p>'}
+        ` : `<p class="muted-text">${translate('loginToComment')}</p>`}
       </section>
 
       ${actions}
@@ -1500,6 +1629,7 @@ const renderEventCard = (event) => {
   `;
 };
 
+// Escape HTML characters to prevent XSS when rendering user-controlled text.
 const escapeHtml = (unsafe) => {
   const value = unsafe == null ? '' : String(unsafe);
   return value
@@ -1534,6 +1664,7 @@ const renderCommentList = (comments) => {
       </div>
       <div class="comment-body">
         <p class="comment-text">${escapeHtml(comment.content)}</p>
+        ${comment.rating ? `<p class="comment-rating-display">${renderStars(comment.rating)} <span>${comment.rating}/5</span></p>` : `<p class="muted-text">${translate('noRatings')}</p>`}
       </div>
       ${currentRole === 'admin' ? `
         <div class="comment-controls">
@@ -1558,6 +1689,7 @@ const renderCommentPager = (eventId, page, limit, totalComments) => {
   `;
 };
 
+// Load comments for a specific event and display paginated results.
 const loadComments = async (eventId, page = 1) => {
   const commentsContainer = document.getElementById(`comments-${eventId}`);
   if (!commentsContainer) return;
@@ -1889,6 +2021,20 @@ eventsList.addEventListener('click', async (event) => {
   const button = event.target.closest('button');
   if (!button) return;
 
+  if (button.classList.contains('star-input-btn')) {
+    const eventId = button.dataset.eventId;
+    const rating = Number(button.dataset.rating || 0);
+    const ratingInput = document.querySelector(`input.comment-rating-input[data-event-id="${eventId}"]`);
+    const stars = document.querySelectorAll(`.star-input-btn[data-event-id="${eventId}"]`);
+    if (ratingInput) {
+      ratingInput.value = rating;
+    }
+    stars.forEach((star) => {
+      star.classList.toggle('active', Number(star.dataset.rating) <= rating);
+    });
+    return;
+  }
+
   const id = button.dataset.id;
   if (!id) return;
 
@@ -1991,10 +2137,13 @@ eventsList.addEventListener('click', async (event) => {
       return;
     }
 
+    const ratingInput = document.querySelector(`input.comment-rating-input[data-event-id="${eventId}"]`);
+    const rating = Number(ratingInput?.value || 0);
+
     try {
       const response = await fetchWithAuth(`/api/events/${eventId}/comments`, {
         method: 'POST',
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ content, rating })
       });
       if (!response.ok) {
         const error = await response.json();
@@ -2149,11 +2298,28 @@ dateFilter.addEventListener('change', applyFilters);
 districtFilter?.addEventListener('change', applyFilters);
 budgetFilter?.addEventListener('change', applyFilters);
 attendanceFilter?.addEventListener('change', applyFilters);
+sortFilter?.addEventListener('change', applyFilters);
 showArchived.addEventListener('change', loadEvents);
 
 // Theme Event Listener
 themeToggle.addEventListener('click', toggleTheme);
+langToggle?.addEventListener('click', async () => {
+  const nextLanguage = getCurrentLanguage() === 'ar' ? 'en' : 'ar';
+  window.appI18n?.setLanguage?.(nextLanguage);
+  if (allEvents.length) {
+    await loadEvents();
+  }
+});
 notificationToggle?.addEventListener('click', toggleNotifications);
+notificationsBell?.addEventListener('click', toggleNotificationsPanel);
+markNotificationsReadBtn?.addEventListener('click', markNotificationsRead);
+document.addEventListener('click', (event) => {
+  if (!notificationPanel || notificationPanel.classList.contains('hidden')) return;
+  const clickedInside = notificationPanel.contains(event.target) || notificationsBell?.contains(event.target);
+  if (!clickedInside) {
+    notificationPanel.classList.add('hidden');
+  }
+});
 
 // View Toggle Event Listeners
 gridViewBtn.addEventListener('click', switchToGridView);
@@ -2281,6 +2447,7 @@ mapModal?.addEventListener('click', (event) => {
   }
 });
 
+// Initialize the main application state, UI theme, notifications, and event loading.
 const initialize = async () => {
   const splash = document.getElementById('appSplash');
   if (splash) {
@@ -2310,6 +2477,10 @@ const initialize = async () => {
       notificationSettingsBtn.textContent = notificationsEnabled ? '🔔⚙️' : '🔕⚙️';
       notificationSettingsBtn.title = notificationsEnabled ? 'إعدادات الإشعارات (مفعل)' : 'إعدادات الإشعارات (معطل)';
     }
+    if (notificationSettingsBtn) {
+      notificationSettingsBtn.textContent = notificationsEnabled ? '🔔⚙️' : '🔕⚙️';
+      notificationSettingsBtn.title = notificationsEnabled ? 'إعدادات الإشعارات (مفعل)' : 'إعدادات الإشعارات (معطل)';
+    }
 
     const loaded = loadSession();
     if (!loaded) {
@@ -2330,6 +2501,8 @@ const initialize = async () => {
         if (newEventsNotificationsEnabled) checkNewEvents();
         startNotificationPolling();
       }
+
+      await loadNotifications();
     } catch (error) {
       console.error(error);
       clearSession();

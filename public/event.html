@@ -10,10 +10,11 @@
   <header class="site-header">
     <div class="container header-content">
       <div>
-        <a href="/" class="button secondary small">الرئيسية</a>
-        <a href="/profile.html" class="button secondary small">صفحتي</a>
+        <a href="/" class="button secondary small" data-i18n="home">الرئيسية</a>
+        <a href="/about.html" class="button secondary small" data-i18n="about">عن الموقع</a>
+        <a href="/profile.html" class="button secondary small" data-i18n="profile">صفحتي</a>
       </div>
-      <h1>تفاصيل الفعالية</h1>
+      <h1 data-i18n="eventDetailsTitle">تفاصيل الفعالية</h1>
     </div>
   </header>
 
@@ -25,6 +26,7 @@
         <div class="section-header">
           <h2 id="eventTitle"></h2>
           <p id="eventMeta" class="muted-text"></p>
+          <div id="eventRating" class="rating-summary"></div>
         </div>
         <div id="eventMedia" class="event-media-gallery"></div>
         <div class="event-detail-grid">
@@ -69,15 +71,9 @@
           <p id="loginNotice" class="muted-text hidden">يرجى تسجيل الدخول لإرسال تقييم. <a href="/">اذهب إلى صفحة الدخول</a></p>
           <div id="reviewForm" class="panel panel-secondary hidden">
             <div class="form-group">
-              <label for="reviewRating">تقييم</label>
-              <select id="reviewRating" class="filter-select">
-                <option value="">اختر التقييم</option>
-                <option value="5">⭐️⭐️⭐️⭐️⭐️</option>
-                <option value="4">⭐️⭐️⭐️⭐️</option>
-                <option value="3">⭐️⭐️⭐️</option>
-                <option value="2">⭐️⭐️</option>
-                <option value="1">⭐️</option>
-              </select>
+              <label data-i18n="yourRating">تقييم</label>
+              <div id="reviewStars" class="star-rating-input"></div>
+              <input type="hidden" id="reviewRating" value="0" />
             </div>
             <div class="form-group">
               <label for="reviewContent">مراجعة</label>
@@ -96,6 +92,7 @@
   <footer class="site-footer">
     <p>© 2026 فعالية درعا</p>
   </footer>
+  <script src="/language.js"></script>
   <script src="/event.js"></script>
 </body>
 </html>

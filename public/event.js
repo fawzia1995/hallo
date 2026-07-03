@@ -4,6 +4,7 @@ const eventLoading = document.getElementById('eventLoading');
 const eventDetails = document.getElementById('eventDetails');
 const eventTitle = document.getElementById('eventTitle');
 const eventMeta = document.getElementById('eventMeta');
+const eventRating = document.getElementById('eventRating');
 const eventDescription = document.getElementById('eventDescription');
 const eventDate = document.getElementById('eventDate');
 const eventDistrict = document.getElementById('eventDistrict');
@@ -24,6 +25,7 @@ const reviewRating = document.getElementById('reviewRating');
 const reviewContent = document.getElementById('reviewContent');
 const submitReviewBtn = document.getElementById('submitReviewBtn');
 const reviewMessage = document.getElementById('reviewMessage');
+const reviewStars = document.getElementById('reviewStars');
 const attendBtn = document.getElementById('attendBtn');
 
 let countdownInterval = null;
@@ -48,6 +50,32 @@ const fetchWithAuth = (url, options = {}) => {
     headers.Authorization = `Bearer ${token}`;
   }
   return fetch(url, { ...options, headers });
+};
+
+const getCurrentLanguage = () => window.appI18n?.getLanguage?.() || localStorage.getItem('eventAppLanguage') || 'ar';
+const translate = (key) => window.appI18n?.t?.(key, getCurrentLanguage()) || key;
+
+const renderStars = (value = 0, max = 5) => {
+  const numericValue = Number(value) || 0;
+  const safeValue = Math.max(0, Math.min(max, numericValue));
+  const fullStars = Math.round(safeValue);
+  const emptyStars = Math.max(0, max - fullStars);
+  return `<span class="star-rating" aria-label="${safeValue} من ${max}">${'★'.repeat(fullStars)}${'☆'.repeat(emptyStars)}</span>`;
+};
+
+const renderReviewStars = () => {
+  if (!reviewStars) return;
+  reviewStars.innerHTML = [1, 2, 3, 4, 5].map((value) => `<button type="button" class="star-input-btn" data-rating="${value}" aria-label="${translate('rate')} ${value}">★</button>`).join('');
+  updateReviewStarSelection();
+};
+
+const updateReviewStarSelection = () => {
+  if (!reviewStars) return;
+  const selectedValue = Number(reviewRating.value || 0);
+  reviewStars.querySelectorAll('.star-input-btn').forEach((button) => {
+    const rating = Number(button.dataset.rating || 0);
+    button.classList.toggle('active', rating <= selectedValue);
+  });
 };
 
 // Format a date string into a readable Arabic date and time format.
@@ -131,12 +159,12 @@ const renderPrices = (event, seatMap) => {
 
 // Create the HTML for a single user review comment card.
 const renderComment = (comment) => {
-  const stars = comment.rating ? '⭐'.repeat(comment.rating) : 'بدون تقييم';
+  const stars = comment.rating ? `<span class="comment-rating">${renderStars(comment.rating)}</span>` : `<span class="muted-text">${translate('noRatings')}</span>`;
   return `
     <article class="comment-card">
       <div class="comment-header">
         <strong>${comment.username}</strong>
-        <span class="comment-rating">${stars}</span>
+        ${stars}
       </div>
       <p>${comment.content}</p>
       <p class="muted-text">${comment.createdAt ? formatDate(comment.createdAt) : ''}</p>
@@ -168,6 +196,11 @@ const renderEvent = async (event) => {
   currentEvent = event;
   eventTitle.textContent = event.title;
   eventMeta.textContent = `${event.category} · ${event.district || 'المنطقة غير محددة'}`;
+  if (eventRating) {
+    const rating = Number(event.averageRating || 0);
+    const count = Number(event.ratingCount || 0);
+    eventRating.innerHTML = `${renderStars(rating)} <span>${rating > 0 ? `${rating.toFixed(1)} / 5` : translate('noRatings')}</span> <span class="rating-count">${count} ${translate('reviewsCount')}</span>`;
+  }
   eventDescription.textContent = event.description;
   eventDate.textContent = formatDate(event.date);
   eventDistrict.textContent = event.district || 'غير محدد';
@@ -205,7 +238,6 @@ const renderEvent = async (event) => {
     renderPrices(event, null);
   }
 
-  const token = getAuthToken();
   if (!token) {
     reviewForm.classList.add('hidden');
     openReviewFormBtn.classList.add('hidden');
@@ -224,8 +256,16 @@ const renderEvent = async (event) => {
     reviewAccessMessage.textContent = 'يمكنك إضافة تقييم فقط بعد شراء تذكرة أو تأكيد الحضور.';
   }
 
+  renderReviewStars();
   loadComments();
 };
+
+reviewStars?.addEventListener('click', (event) => {
+  const button = event.target.closest('.star-input-btn');
+  if (!button) return;
+  reviewRating.value = button.dataset.rating || '0';
+  updateReviewStarSelection();
+});
 
 // Mark attendance (RSVP) as 'attending' so users can be allowed to review
 attendBtn?.addEventListener('click', async () => {
@@ -294,7 +334,7 @@ const loadEvent = async () => {
 const postReview = async () => {
   reviewMessage.textContent = '';
   const content = reviewContent.value.trim();
-  const rating = reviewRating.value;
+  const rating = Number(reviewRating.value || 0);
   if (!content) {
     reviewMessage.textContent = 'يرجى كتابة المراجعة قبل الإرسال.';
     return;
@@ -311,7 +351,8 @@ const postReview = async () => {
     }
     reviewMessage.textContent = 'تم إرسال المراجعة بنجاح.';
     reviewContent.value = '';
-    reviewRating.value = '';
+    reviewRating.value = '0';
+    updateReviewStarSelection();
     await loadEvent();
   } catch (err) {
     reviewMessage.textContent = err.message;

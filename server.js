@@ -51,6 +51,9 @@ app.use(express.static(path.join(__dirname, 'public'), {
   lastModified: false,
   maxAge: 0
 }));
+app.get('/about', (req, res) => {
+  res.redirect('/about.html');
+});
 if (process.env.RENDER) {
   app.use('/uploads', express.static('/tmp/uploads', {
     etag: false,
@@ -82,6 +85,45 @@ const setMailTransporter = (transporter) => {
 
 // Generate a random session token and look up a user session by token.
 const getUserFromToken = (token) => sessions.get(token);
+
+const createNotification = ({ userId, title, body, type = 'info', relatedId = null }, callback) => {
+  const createdAt = Math.floor(Date.now() / 1000);
+  db.run(
+    'INSERT INTO notifications (userId, title, body, type, relatedId, createdAt, isRead) VALUES (?, ?, ?, ?, ?, ?, 0)',
+    [userId, title, body, type, relatedId, createdAt],
+    function (err) {
+      if (callback) {
+        callback(err, this.lastID);
+      }
+    }
+  );
+};
+
+const createNotificationsForUsers = ({ userIds, title, body, type = 'info', relatedId = null }, callback) => {
+  if (!userIds || userIds.length === 0) {
+    if (callback) {
+      callback(null, []);
+    }
+    return;
+  }
+
+  const createdAt = Math.floor(Date.now() / 1000);
+  const placeholders = userIds.map(() => '(?, ?, ?, ?, ?, ?, 0)').join(', ');
+  const params = [];
+  userIds.forEach((userId) => {
+    params.push(userId, title, body, type, relatedId, createdAt);
+  });
+
+  db.run(
+    `INSERT INTO notifications (userId, title, body, type, relatedId, createdAt, isRead) VALUES ${placeholders}`,
+    params,
+    function (err) {
+      if (callback) {
+        callback(err, this.lastID);
+      }
+    }
+  );
+};
 
 app.use(makeAttachOptionalUser(getUserFromToken));
 
@@ -285,6 +327,20 @@ const initDb = () => {
         rating INTEGER,
         createdAt INTEGER NOT NULL DEFAULT (strftime('%s','now')),
         FOREIGN KEY(eventId) REFERENCES events(id)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'info',
+        relatedId INTEGER,
+        isRead INTEGER NOT NULL DEFAULT 0,
+        createdAt INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+        FOREIGN KEY(userId) REFERENCES users(id)
       )
     `);
 
@@ -746,17 +802,51 @@ app.post('/api/logout', requireAuth, (req, res) => {
   res.json({ logout: true });
 });
 
+app.get('/api/notifications', requireAuth, (req, res) => {
+  db.all(
+    'SELECT id, title, body, type, relatedId, isRead, createdAt FROM notifications WHERE userId = ? ORDER BY createdAt DESC LIMIT 50',
+    [req.user.id],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json(rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        body: row.body,
+        type: row.type,
+        relatedId: row.relatedId,
+        isRead: Boolean(row.isRead),
+        createdAt: row.createdAt || null
+      })));
+    }
+  );
+});
+
+app.post('/api/notifications/mark-read', requireAuth, (req, res) => {
+  db.run('UPDATE notifications SET isRead = 1 WHERE userId = ?', [req.user.id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ updated: true, count: this.changes });
+  });
+});
+
 // Public and authenticated event endpoints.
 // These routes return event listings, detailed event information, comments, RSVPs, attendance, and CRUD operations.
 app.get('/api/events', (req, res) => {
   const showArchived = req.query.archived === 'true';
   const sql = showArchived
     ? `SELECT e.*, (SELECT COUNT(*) FROM comments c WHERE c.eventId = e.id) AS commentCount,
+           (SELECT COUNT(*) FROM comments c WHERE c.eventId = e.id AND c.rating IS NOT NULL) AS ratingCount,
+           (SELECT ROUND(AVG(c.rating), 1) FROM comments c WHERE c.eventId = e.id AND c.rating IS NOT NULL) AS averageRating,
            (SELECT COUNT(*) FROM attendance a WHERE a.eventId = e.id AND a.status = 'attending') AS attendingCount,
            (SELECT COUNT(*) FROM attendance a WHERE a.eventId = e.id AND a.status = 'maybe') AS maybeCount,
            (SELECT COUNT(*) FROM attendance a WHERE a.eventId = e.id AND a.status = 'declined') AS declinedCount
        FROM events e ORDER BY date ASC`
     : `SELECT e.*, (SELECT COUNT(*) FROM comments c WHERE c.eventId = e.id) AS commentCount,
+           (SELECT COUNT(*) FROM comments c WHERE c.eventId = e.id AND c.rating IS NOT NULL) AS ratingCount,
+           (SELECT ROUND(AVG(c.rating), 1) FROM comments c WHERE c.eventId = e.id AND c.rating IS NOT NULL) AS averageRating,
            (SELECT COUNT(*) FROM attendance a WHERE a.eventId = e.id AND a.status = 'attending') AS attendingCount,
            (SELECT COUNT(*) FROM attendance a WHERE a.eventId = e.id AND a.status = 'maybe') AS maybeCount,
            (SELECT COUNT(*) FROM attendance a WHERE a.eventId = e.id AND a.status = 'declined') AS declinedCount
@@ -771,6 +861,8 @@ app.get('/api/events', (req, res) => {
     if (eventIds.length === 0) {
       return res.json(rows.map((event) => ({
         ...event,
+        ratingCount: event.ratingCount || 0,
+        averageRating: event.averageRating != null ? Number(event.averageRating) : 0,
         attendingCount: 0,
         maybeCount: 0,
         declinedCount: 0,
@@ -800,6 +892,8 @@ app.get('/api/events', (req, res) => {
         const enhancedEvents = rows.map((event) => ({
           ...event,
           myAttendanceStatus: statusByEvent[event.id] || null,
+          ratingCount: event.ratingCount || 0,
+          averageRating: event.averageRating != null ? Number(event.averageRating) : 0,
           attendingCount: event.attendingCount || 0,
           maybeCount: event.maybeCount || 0,
           declinedCount: event.declinedCount || 0,
@@ -830,6 +924,8 @@ app.get('/api/events/:id', (req, res) => {
   const { id } = req.params;
   db.get(`SELECT e.*,
       (SELECT COUNT(*) FROM comments c WHERE c.eventId = e.id) AS commentCount,
+      (SELECT COUNT(*) FROM comments c WHERE c.eventId = e.id AND c.rating IS NOT NULL) AS ratingCount,
+      (SELECT ROUND(AVG(c.rating), 1) FROM comments c WHERE c.eventId = e.id AND c.rating IS NOT NULL) AS averageRating,
       (SELECT COUNT(*) FROM attendance a WHERE a.eventId = e.id AND a.status = 'attending') AS attendingCount,
       (SELECT COUNT(*) FROM attendance a WHERE a.eventId = e.id AND a.status = 'maybe') AS maybeCount,
       (SELECT COUNT(*) FROM attendance a WHERE a.eventId = e.id AND a.status = 'declined') AS declinedCount
@@ -852,6 +948,8 @@ app.get('/api/events/:id', (req, res) => {
 
       const eventData = {
         ...row,
+        ratingCount: row.ratingCount || 0,
+        averageRating: row.averageRating != null ? Number(row.averageRating) : 0,
         attendingCount: row.attendingCount || 0,
         maybeCount: row.maybeCount || 0,
         declinedCount: row.declinedCount || 0,
@@ -945,6 +1043,15 @@ app.post('/api/events/:id/rsvp', requireAuth, (req, res) => {
           FROM attendance WHERE eventId = ?`;
 
         db.get(countQuery, [id], (countErr, counts) => {
+          if (!countErr) {
+            createNotification({
+              userId: req.user.id,
+              title: 'تم تأكيد حضورك',
+              body: 'تم تحديث حالة حضورك لهذه الفعالية بنجاح.',
+              type: 'attendance',
+              relatedId: Number(id)
+            }, () => {});
+          }
           if (countErr) {
             return res.status(500).json({ error: countErr.message });
           }
@@ -1057,6 +1164,13 @@ app.post('/api/events/:id/comments', requireAuth, (req, res) => {
           if (err) {
             return res.status(500).json({ error: err.message });
           }
+          createNotification({
+            userId: req.user.id,
+            title: 'تم نشر تعليقك',
+            body: 'تمت إضافة تعليقك وتقييمك على هذه الفعالية.',
+            type: 'comment',
+            relatedId: Number(id)
+          }, () => {});
           res.status(201).json({
             id: this.lastID,
             eventId: Number(id),
@@ -1128,6 +1242,21 @@ app.post('/api/events', requireAdmin, upload.fields([{ name: 'image', maxCount: 
     }
     const eventId = this.lastID;
     const inserts = [];
+
+    db.all('SELECT id FROM users', (usersErr, dbUsers) => {
+      const dbIds = (!usersErr && dbUsers && dbUsers.length > 0) ? dbUsers.map((u) => u.id) : [];
+      const inMemoryIds = Array.isArray(users) ? users.map((u) => u.id) : [];
+      const allIds = Array.from(new Set([...dbIds, ...inMemoryIds]));
+      if (allIds.length > 0) {
+        createNotificationsForUsers({
+          userIds: allIds,
+          title: 'فعالية جديدة',
+          body: `تمت إضافة فعالية جديدة: ${title}`,
+          type: 'event_created',
+          relatedId: eventId
+        }, () => {});
+      }
+    });
 
     if (files.image && files.image[0]) {
       inserts.push({ type: 'image', url: `/uploads/${files.image[0].filename}`, filename: files.image[0].filename });
@@ -1642,6 +1771,14 @@ app.post('/api/events/:id/tickets', requireAuth, async (req, res) => {
               console.error('Failed to send ticket email:', mailErr);
             }
           }
+
+          createNotification({
+            userId: req.user.id,
+            title: 'تم حجز التذكرة',
+            body: `تمت حجز تذكرة لحضور ${event.title}.`,
+            type: 'ticket',
+            relatedId: event.id
+          }, () => {});
 
           res.status(201).json({
             ticketId,
