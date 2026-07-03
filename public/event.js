@@ -16,6 +16,7 @@ const eventMap = document.getElementById('eventMap');
 const ticketPrices = document.getElementById('ticketPrices');
 const bookButton = document.getElementById('bookButton');
 const reviewForm = document.getElementById('reviewForm');
+const openReviewFormBtn = document.getElementById('openReviewFormBtn');
 const loginNotice = document.getElementById('loginNotice');
 const reviewAccessMessage = document.getElementById('reviewAccessMessage');
 const existingCommentsContainer = document.getElementById('existingComments');
@@ -28,6 +29,7 @@ let countdownInterval = null;
 let currentEvent = null;
 let authToken = null;
 
+// Retrieve the current authenticated session token from localStorage.
 const getAuthToken = () => {
   try {
     const session = JSON.parse(localStorage.getItem('eventAppSession') || 'null');
@@ -37,6 +39,7 @@ const getAuthToken = () => {
   }
 };
 
+// Perform fetch requests with the auth token header when available.
 const fetchWithAuth = (url, options = {}) => {
   const headers = options.headers || {};
   const token = getAuthToken();
@@ -46,6 +49,7 @@ const fetchWithAuth = (url, options = {}) => {
   return fetch(url, { ...options, headers });
 };
 
+// Format a date string into a readable Arabic date and time format.
 const formatDate = (value) => {
   const date = new Date(value);
   return new Intl.DateTimeFormat('ar-EG', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
@@ -53,6 +57,7 @@ const formatDate = (value) => {
 
 const padZero = (value) => value.toString().padStart(2, '0');
 
+// Update the countdown timer for the current event and refresh it every second.
 const updateCountdown = (dateString) => {
   if (countdownInterval) clearInterval(countdownInterval);
   const targetDate = new Date(dateString);
@@ -72,6 +77,7 @@ const updateCountdown = (dateString) => {
   }, 1000);
 };
 
+// Render event media gallery items, including images and video links.
 const renderMedia = (media = []) => {
   if (!media.length) {
     eventMedia.innerHTML = '<p class="muted-text">لا توجد صور أو فيديو توضيحي لهذه الفعالية.</p>';
@@ -88,6 +94,7 @@ const renderMedia = (media = []) => {
   }).join('');
 };
 
+// Display an embedded OpenStreetMap view for the event location.
 const renderMap = (event) => {
   if (!event.latitude || !event.longitude) {
     eventMap.innerHTML = '<p class="muted-text">لا توجد بيانات موقع جغرافي لهذه الفعالية.</p>';
@@ -105,6 +112,7 @@ const renderMap = (event) => {
   `;
 };
 
+// Render the available ticket price options for this event.
 const renderPrices = (event, seatMap) => {
   const rows = [];
   if (event.isHybrid) {
@@ -120,6 +128,7 @@ const renderPrices = (event, seatMap) => {
   ticketPrices.innerHTML = rows.join('');
 };
 
+// Create the HTML for a single user review comment card.
 const renderComment = (comment) => {
   const stars = comment.rating ? '⭐'.repeat(comment.rating) : 'بدون تقييم';
   return `
@@ -134,6 +143,7 @@ const renderComment = (comment) => {
   `;
 };
 
+// Load review comments for the current event and show them in the comments section.
 const loadComments = async () => {
   existingCommentsContainer.innerHTML = '<p class="muted-text">جارٍ تحميل تقييمات الحضور...</p>';
   try {
@@ -152,6 +162,7 @@ const loadComments = async () => {
   }
 };
 
+// Fill the event details page with the selected event's information.
 const renderEvent = async (event) => {
   currentEvent = event;
   eventTitle.textContent = event.title;
@@ -165,7 +176,15 @@ const renderEvent = async (event) => {
   renderMedia(event.media || []);
   renderMap(event);
   updateCountdown(event.date);
-  bookButton.href = `/checkout.html?eventId=${event.id}`;
+  if (event.userHasTicket) {
+    bookButton.textContent = 'لقد حجزت هذه الفعالية بالفعل';
+    bookButton.removeAttribute('href');
+    bookButton.classList.add('disabled');
+  } else {
+    bookButton.textContent = 'احجز الآن';
+    bookButton.href = `/checkout.html?eventId=${event.id}`;
+    bookButton.classList.remove('disabled');
+  }
 
   const response = await fetchWithAuth(`/api/events/${event.id}/seat-map`);
   if (response.ok) {
@@ -178,33 +197,38 @@ const renderEvent = async (event) => {
   const token = getAuthToken();
   if (!token) {
     reviewForm.classList.add('hidden');
+    openReviewFormBtn.classList.add('hidden');
     loginNotice.classList.remove('hidden');
     reviewAccessMessage.classList.add('hidden');
-  } else if (event.userCanReview && !event.userHasCommented) {
-    reviewForm.classList.remove('hidden');
+  } else if (event.userCanReview) {
+    reviewForm.classList.add('hidden');
+    openReviewFormBtn.classList.remove('hidden');
     loginNotice.classList.add('hidden');
     reviewAccessMessage.classList.add('hidden');
   } else {
     reviewForm.classList.add('hidden');
+    openReviewFormBtn.classList.add('hidden');
     loginNotice.classList.add('hidden');
     reviewAccessMessage.classList.remove('hidden');
-    if (event.userHasCommented) {
-      reviewAccessMessage.textContent = 'لقد قمت بإضافة تقييم لهذه الفعالية سابقًا.';
-    } else if (event.userHasTicket) {
-      reviewAccessMessage.textContent = 'يمكنك إضافة تقييم بعد انتهاء الفعالية.';
-    } else {
-      reviewAccessMessage.textContent = 'يمكنك إضافة تقييم فقط بعد شراء تذكرة وحضور الفعالية.';
-    }
+    reviewAccessMessage.textContent = 'يمكنك إضافة تقييم فقط بعد شراء تذكرة أو تأكيد الحضور.';
   }
 
   loadComments();
 };
 
+openReviewFormBtn?.addEventListener('click', () => {
+  reviewForm.classList.remove('hidden');
+  openReviewFormBtn.classList.add('hidden');
+  reviewForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+// Show an error message on the event detail page when data cannot be retrieved.
 const showError = (message) => {
   eventLoading.textContent = message;
   eventDetails.classList.add('hidden');
 };
 
+// Load the event data from the backend using the id query parameter.
 const loadEvent = async () => {
   if (!eventId) {
     showError('لا يوجد معرف فعالية صالح في الرابط.');
@@ -212,7 +236,7 @@ const loadEvent = async () => {
   }
 
   try {
-    const response = await fetch(`/api/events/${encodeURIComponent(eventId)}`);
+    const response = await fetchWithAuth(`/api/events/${encodeURIComponent(eventId)}`);
     if (!response.ok) {
       throw new Error('فشل تحميل بيانات الفعالية.');
     }
@@ -226,6 +250,7 @@ const loadEvent = async () => {
   }
 };
 
+// Post a user review to the backend and display success or error feedback.
 const postReview = async () => {
   reviewMessage.textContent = '';
   const content = reviewContent.value.trim();
@@ -247,6 +272,7 @@ const postReview = async () => {
     reviewMessage.textContent = 'تم إرسال المراجعة بنجاح.';
     reviewContent.value = '';
     reviewRating.value = '';
+    await loadEvent();
   } catch (err) {
     reviewMessage.textContent = err.message;
   }

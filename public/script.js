@@ -1123,19 +1123,26 @@ const showApp = () => {
 
 const fetchWithAuth = async (url, options = {}) => {
   const headers = { ...(options.headers || {}) };
-
-  const body = options.body;
+  let body = options.body;
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
   if (!isFormData) {
-    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+    if (typeof body === 'object' && body !== null) {
+      body = JSON.stringify(body);
+      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+    } else if (typeof body === 'string') {
+      const trimmed = body.trim();
+      if (!headers['Content-Type'] && !headers['content-type'] && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+        headers['Content-Type'] = 'application/json';
+      }
+    }
   }
 
   if (authToken) {
     headers.Authorization = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(url, { ...options, headers });
+  const response = await fetch(url, { ...options, headers, body });
   if (response.status === 401) {
     clearSession();
     showLogin();

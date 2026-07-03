@@ -128,6 +128,10 @@ const loadCheckout = async () => {
     const seatData = seatResponse.ok ? await seatResponse.json() : null;
     renderSeatMap(seatData?.seatMap);
     renderPriceOptions(event, seatData?.seatMap);
+    if (event.userHasTicket) {
+      confirmationMessage.innerHTML = '<p class="info-text">لقد حجزت هذه الفعالية بالفعل ولن تتمكن من حجزها مرة أخرى.</p>';
+      checkoutForm.querySelectorAll('input, select, button').forEach((control) => control.disabled = true);
+    }
     checkoutLoading.classList.add('hidden');
     checkoutContent.classList.remove('hidden');
   } catch (err) {

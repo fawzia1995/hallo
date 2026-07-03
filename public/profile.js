@@ -26,10 +26,13 @@ const formatDate = (value) => {
   return new Intl.DateTimeFormat('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
 };
 
+const activeTicketsNotice = document.getElementById('activeTicketsNotice');
+
 const showLoginMessage = () => {
   profileLoginNotice.classList.remove('hidden');
   activeTicketsContainer.innerHTML = '';
   historyTicketsContainer.innerHTML = '';
+  activeTicketsNotice.classList.add('hidden');
 };
 
 const renderTicketCard = (ticket) => {
@@ -76,6 +79,14 @@ const loadProfileData = async () => {
 
     const activeTickets = await activeRes.json();
     const historyTickets = await historyRes.json();
+
+    if (activeTickets.length) {
+      activeTicketsNotice.innerHTML = `لديك ${activeTickets.length} تذكرة نشطة حالياً. يمكنك عرض التفاصيل أو العودة إلى صفحة الفعالية.`;
+      activeTicketsNotice.classList.remove('hidden');
+    } else {
+      activeTicketsNotice.classList.add('hidden');
+      activeTicketsNotice.innerHTML = '';
+    }
 
     activeTicketsContainer.innerHTML = activeTickets.length
       ? activeTickets.map(renderTicketCard).join('')

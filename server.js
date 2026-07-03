@@ -9,8 +9,21 @@ const fs = require('fs');
 const QRCode = require('qrcode');
 const PDFDocument = require('pdfkit');
 const Stripe = require('stripe');
+const {
+  generateToken,
+  getResetPasswordUrl,
+  getActivationUrl,
+  buildResetPasswordEmailHtml,
+  buildActivationEmailHtml,
+  makeAttachOptionalUser,
+  makeRequireAuth,
+  makeRequireAdmin
+} = require('./lib/server-utils');
+const { generateTicketPdf } = require('./lib/pdf-utils');
 require('dotenv').config();
 
+// Express application setup for the event management backend.
+// This server serves the public SPA, handles API requests, and manages SQLite storage.
 const app = express();
 const PORT = process.env.PORT || 3000;
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
@@ -56,14 +69,6 @@ app.use(express.json());
 const stripeSecret = process.env.STRIPE_SECRET_KEY || null;
 const stripe = stripeSecret ? Stripe(stripeSecret) : null;
 
-const attachOptionalUser = (req, res, next) => {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  req.user = token ? getUserFromToken(token) : null;
-  next();
-};
-app.use(attachOptionalUser);
-
 const users = [
   { id: 0, username: 'admin', password: 'admin123', role: 'admin' },
   { id: -1, username: 'user', password: 'user123', role: 'normal' }
@@ -71,9 +76,16 @@ const users = [
 const sessions = new Map();
 let mailTransporter = null;
 
-const generateToken = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+const setMailTransporter = (transporter) => {
+  mailTransporter = transporter;
+};
+
+// Generate a random session token and look up a user session by token.
 const getUserFromToken = (token) => sessions.get(token);
 
+app.use(makeAttachOptionalUser(getUserFromToken));
+
+// Create and return a Nodemailer transporter using SMTP or a test Ethereal account.
 const createMailer = async () => {
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     return nodemailer.createTransport({
@@ -100,28 +112,23 @@ const createMailer = async () => {
   });
 };
 
+// Initialize the global mail transporter once when the server starts.
 const initMailer = async () => {
   mailTransporter = await createMailer();
   console.log('Mail transporter initialized');
 };
 
+// Send a password reset email with a secure token link.
 const sendResetPasswordEmail = async ({ email, username, token, host }) => {
   if (!mailTransporter) {
     throw new Error('Mailer not initialized');
   }
-  const resetUrl = `${host}/reset-password?token=${encodeURIComponent(token)}`;
+  const resetUrl = getResetPasswordUrl({ host, token });
   const info = await mailTransporter.sendMail({
     from: process.env.SMTP_FROM || '"فعالية درعا" <no-reply@daraa-events.local>',
     to: email,
     subject: 'إعادة تعيين كلمة المرور',
-    html: `
-      <p>مرحباً ${username},</p>
-      <p>لقد طلبت إعادة تعيين كلمة المرور لحسابك في موقع فعاليات درعا.</p>
-      <p>اضغط الرابط التالي لإعادة تعيين كلمة المرور:</p>
-      <p><a href="${resetUrl}">${resetUrl}</a></p>
-      <p>إذا لم تطلب هذا، تجاهل الرسالة.</p>
-      <p>الرابط صالح لمدة ساعة واحدة.</p>
-    `
+    html: buildResetPasswordEmailHtml({ username, resetUrl })
   });
 
   const previewUrl = nodemailer.getTestMessageUrl(info);
@@ -130,23 +137,17 @@ const sendResetPasswordEmail = async ({ email, username, token, host }) => {
   }
 };
 
+// Send an account activation email containing the activation token link.
 const sendActivationEmail = async ({ email, username, token, host }) => {
   if (!mailTransporter) {
     throw new Error('Mailer not initialized');
   }
-  const activationUrl = `${host}/api/activate?token=${encodeURIComponent(token)}`;
+  const activationUrl = getActivationUrl({ host, token });
   const info = await mailTransporter.sendMail({
     from: process.env.SMTP_FROM || '"فعالية درعا" <no-reply@daraa-events.local>',
     to: email,
     subject: 'تفعيل الحساب',
-    html: `
-      <p>مرحباً ${username},</p>
-      <p>شكراً لتسجيلك في موقع فعاليات درعا.</p>
-      <p>اضغط الرابط التالي لتفعيل حسابك:</p>
-      <p><a href="${activationUrl}">${activationUrl}</a></p>
-      <p>إذا لم تطلب هذا، تجاهل الرسالة.</p>
-      <p>الرابط صالح لمدة 24 ساعة.</p>
-    `
+    html: buildActivationEmailHtml({ username, activationUrl })
   });
 
   const previewUrl = nodemailer.getTestMessageUrl(info);
@@ -155,56 +156,11 @@ const sendActivationEmail = async ({ email, username, token, host }) => {
   }
 };
 
-const generateTicketPdf = (ticketData, qrFile, pdfFile) => {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A6', margin: 20 });
-    const stream = fs.createWriteStream(pdfFile);
-    doc.pipe(stream);
+// Middleware that requires the request to be authenticated before continuing.
+const requireAuth = makeRequireAuth(getUserFromToken);
 
-    doc.fontSize(16).text('تذكرة فعالية', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`الفعالية: ${ticketData.eventTitle || ''}`);
-    doc.text(`النوع: ${ticketData.ticketType || 'عام'}`);
-    if (ticketData.isVirtual) {
-      doc.text('تذكرة افتراضية للبث المباشر');
-    } else {
-      doc.text(`المقعد: ${ticketData.seatCategory || '-'} رقم ${ticketData.seatNumber || '-'}`);
-    }
-    doc.text(`رمز التذكرة: ${ticketData.ticketCode}`);
-    doc.moveDown();
-    if (fs.existsSync(qrFile)) {
-      try {
-        doc.image(qrFile, { fit: [150, 150], align: 'center' });
-      } catch (imgErr) {
-        console.error('Unable to embed QR in PDF:', imgErr);
-      }
-    }
-    doc.end();
-
-    stream.on('finish', resolve);
-    stream.on('error', reject);
-  });
-};
-
-const requireAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  const user = token ? getUserFromToken(token) : null;
-  if (!user) {
-    return res.status(401).json({ error: 'غير مصرح بالدخول' });
-  }
-  req.user = user;
-  next();
-};
-
-const requireAdmin = (req, res, next) => {
-  requireAuth(req, res, () => {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'صلاحية المدير مطلوبة' });
-    }
-    next();
-  });
-};
+// Middleware that checks the authenticated user has admin privileges.
+const requireAdmin = makeRequireAdmin(getUserFromToken);
 
 const db = new sqlite3.Database(dbFile, (err) => {
   if (err) {
@@ -213,6 +169,7 @@ const db = new sqlite3.Database(dbFile, (err) => {
   }
 });
 
+// Initialize the SQLite database schema and ensure upload directories exist.
 const initDb = () => {
   // Ensure uploads directory exists
   if (!fs.existsSync(uploadsDir)) {
@@ -470,6 +427,8 @@ const initDb = () => {
   });
 };
 
+// Authentication and account management endpoints.
+// These routes handle registration, login, activation, password reset, and logout.
 app.post('/api/register', async (req, res) => {
   const { username, password, email } = req.body;
   if (!username || !password || !email) {
@@ -787,6 +746,8 @@ app.post('/api/logout', requireAuth, (req, res) => {
   res.json({ logout: true });
 });
 
+// Public and authenticated event endpoints.
+// These routes return event listings, detailed event information, comments, RSVPs, attendance, and CRUD operations.
 app.get('/api/events', (req, res) => {
   const showArchived = req.query.archived === 'true';
   const sql = showArchived
@@ -931,17 +892,14 @@ app.get('/api/events/:id', (req, res) => {
                 const hasTicket = ticketRow && ticketRow.ticketCount > 0;
                 const hasAttendance = attendRow && attendRow.attendanceCount > 0;
                 const hasReviewed = commentRow && commentRow.userReviewed > 0;
-                const eventDate = row.date ? new Date(row.date) : null;
-                const nowDate = new Date();
-                // Allow review if user had a valid ticket OR marked attendance; still require event date to be on/after event
-                const canReview = (hasTicket || hasAttendance) && eventDate && eventDate <= nowDate;
+                // Allow review if user has a valid ticket or marked attendance.
+                const canReview = hasTicket || hasAttendance;
 
                 res.json({
                   ...eventData,
                   myAttendanceStatus: statusRow ? statusRow.status : null,
                   userHasTicket: hasTicket,
                   userHasAttendance: hasAttendance,
-                  userHasCommented: hasReviewed,
                   userCanReview: canReview
                 });
               });
@@ -1091,33 +1049,24 @@ app.post('/api/events/:id/comments', requireAuth, (req, res) => {
     if (errA) return res.status(500).json({ error: errA.message });
 
     const proceedToInsert = () => {
-      db.get('SELECT COUNT(*) AS existing FROM comments WHERE eventId = ? AND username = ?', [id, req.user.username], (err3, existingRow) => {
-        if (err3) {
-          return res.status(500).json({ error: err3.message });
-        }
-        if (existingRow && existingRow.existing > 0) {
-          return res.status(400).json({ error: 'لقد قمت بإضافة تقييم لهذه الفعالية بالفعل' });
-        }
-
-        const createdAt = Math.floor(Date.now() / 1000);
-        db.run(
-          'INSERT INTO comments (eventId, username, content, rating, createdAt) VALUES (?, ?, ?, ?, ?)',
-          [id, req.user.username, content.trim(), ratingValue, createdAt],
-          function (err) {
-            if (err) {
-              return res.status(500).json({ error: err.message });
-            }
-            res.status(201).json({
-              id: this.lastID,
-              eventId: Number(id),
-              username: req.user.username,
-              content: content.trim(),
-              rating: ratingValue,
-              createdAt: new Date(createdAt * 1000).toISOString()
-            });
+      const createdAt = Math.floor(Date.now() / 1000);
+      db.run(
+        'INSERT INTO comments (eventId, username, content, rating, createdAt) VALUES (?, ?, ?, ?, ?)',
+        [id, req.user.username, content.trim(), ratingValue, createdAt],
+        function (err) {
+          if (err) {
+            return res.status(500).json({ error: err.message });
           }
-        );
-      });
+          res.status(201).json({
+            id: this.lastID,
+            eventId: Number(id),
+            username: req.user.username,
+            content: content.trim(),
+            rating: ratingValue,
+            createdAt: new Date(createdAt * 1000).toISOString()
+          });
+        }
+      );
     };
 
     if (attendRow && attendRow.status === 'attending') {
@@ -1128,9 +1077,8 @@ app.post('/api/events/:id/comments', requireAuth, (req, res) => {
     // Otherwise, fall back to checking for a valid paid/scanned ticket (and that event date passed)
     db.get(
       `SELECT 1 FROM tickets t
-       LEFT JOIN events e ON e.id = t.eventId
-       WHERE t.eventId = ? AND t.userId = ? AND t.status IN ('paid', 'scanned') AND date(e.date) <= date(?) LIMIT 1`,
-      [id, req.user.id, now],
+       WHERE t.eventId = ? AND t.userId = ? AND t.status IN ('paid', 'scanned') LIMIT 1`,
+      [id, req.user.id],
       (err2, ticketRow) => {
         if (err2) {
           return res.status(500).json({ error: err2.message });
@@ -1633,8 +1581,8 @@ app.post('/api/events/:id/tickets', requireAuth, async (req, res) => {
 
     const createTicketRecord = async () => {
       const ticketCode = crypto.randomBytes(10).toString('hex');
-      const username = req.user.username || null;
-      const userId = req.user.id || null;
+      const username = (req.user && typeof req.user.username !== 'undefined') ? req.user.username : null;
+      const userId = (req.user && typeof req.user.id !== 'undefined' && req.user.id !== null) ? req.user.id : null;
       const status = 'paid';
       const insertSql = `INSERT INTO tickets (eventId, userId, username, ticketType, priceCents, currency, paymentProvider, status, ticketCode, qrPath, pdfPath, isVirtual, seatNumber, seatCategory, streamUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       const insertParams = [
@@ -2082,6 +2030,19 @@ const startServer = (port, maxRetries = 5) => {
     console.error('Server error:', err.message);
     process.exit(1);
   });
+
+  return server;
 };
 
-startApp();
+module.exports = {
+  app,
+  startServer,
+  initDb,
+  startApp,
+  sessions,
+  setMailTransporter
+};
+
+if (require.main === module) {
+  startApp();
+}
